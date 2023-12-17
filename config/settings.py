@@ -9,7 +9,8 @@ https://docs.djangoproject.com/en/4.2/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/4.2/ref/settings/
 """
-
+import os
+from datetime import timedelta
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -43,11 +44,15 @@ INSTALLED_APPS = [
 
     'rest_framework',
     'drf_yasg',
+    'rest_framework_simplejwt',
+    'corsheaders',
+    'django-celery-beat',
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -82,9 +87,9 @@ WSGI_APPLICATION = 'config.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'spa',
-        'USER': 'postgres',
-        'PASSWORD': 12345,
+        'NAME': os.getenv("DATABASES_NAME"),
+        'USER': os.getenv("DATABASES_USER"),
+        'PASSWORD': os.getenv("DATABASES_PASSWORD"),
     }
 }
 
@@ -131,3 +136,56 @@ STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 AUTH_USER_MODEL = 'users.User'
+
+# Настройки JWT-токенов
+REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
+    ],
+}
+# Время жизни токена
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(days=1),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
+}
+
+# CORS
+# параметр CORS для указания разрешенных источников
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:8000",
+]
+# позволяет определить список доверенных доменов, из которых
+# разрешено отправлять запросы без проверки CSRF-токена
+CSRF_TRUSTED_ORIGINS = [
+    "http://localhost:8000",
+]
+
+LOGIN_REDIRECT_URL = "/"  # редирект для автоаризации
+LOGOUT_REDIRECT_URL = "/"  # редирект для выхода из автоаризации
+
+# Настройки для Celery
+
+# URL-адрес брокера сообщений
+CELERY_BROKER_URL = "redis://localhost:6379"  # Например, Redis, который по умолчанию работает на порту 6379
+
+# URL-адрес брокера результатов, также Redis
+CELERY_RESULT_BACKEND = "redis://localhost:6379"
+
+# Часовой пояс для работы Celery
+CELERY_TIMEZONE = "Europe/Moscow"
+
+# Флаг отслеживания выполнения задач
+CELERY_TASK_TRACK_STARTED = True
+
+# Максимальное время на выполнение задачи
+CELERY_TASK_TIME_LIMIT = 30 * 60
+# Настройка переодической задачи
+CELERY_BEAT_SCHEDULE = {
+    "send_message": {
+        "task": "Atomic_Habits.tasks.send_reminders",
+        "schedule": timedelta(hours=12),  # переодичность проверки 12 часов
+    },
+}
+
+
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
